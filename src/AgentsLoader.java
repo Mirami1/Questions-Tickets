@@ -3,10 +3,7 @@ import jade.wrapper.AgentController;
 import jade.core.Agent;
 import jade.wrapper.StaleProxyException;
 
-import java.io.BufferedReader;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -15,9 +12,11 @@ public class AgentsLoader extends Agent {
     protected void setup() {
         // QuestionAgent creation
         BufferedReader reader = null;
+        BufferedReader reader_1 = null;
         int lineCount = 0;
         try {
-            reader = new BufferedReader(new InputStreamReader(new FileInputStream("agents.txt"), "utf-8")); // или cp1251
+            reader = new BufferedReader(new InputStreamReader(new FileInputStream("C:\\Users\\misha\\IdeaProjects\\Questions&Tickets\\src\\agents.txt"), "utf-8")); // или cp1251
+
             String currentLine;
             while ((currentLine = reader.readLine()) != null) {
                 lineCount++;
@@ -39,6 +38,55 @@ public class AgentsLoader extends Agent {
             }
         }
 
+        //ExamCardAgent creation
+
+        int countOfExamCardAgents = 0;
+        try {
+            reader_1 = new BufferedReader(new InputStreamReader(new FileInputStream("C:\\Users\\misha\\IdeaProjects\\Questions&Tickets\\src\\agents.txt"), "utf-8")); // или cp1251
+
+            String currentLine;
+            if ((currentLine = reader_1.readLine()) != null) {
+                countOfExamCardAgents = Integer.parseInt(currentLine.trim());
+            }
+
+        } catch (UnsupportedEncodingException ex) {
+            Logger.getLogger(AgentsLoader.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (IOException ex) {
+            Logger.getLogger(AgentsLoader.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        finally {
+            try {
+                reader_1.close();
+            } catch (IOException ex) {
+                System.out.println("Can't close the file");
+            }
+        }
+
+
+        for(int i=0;i<countOfExamCardAgents;i++){
+            try {
+                AgentController ac = getContainerController().createNewAgent("b"+i,"ExamCardAgent",null);
+                ac.start();
+            } catch (StaleProxyException ex) {
+                Logger.getLogger(AgentsLoader.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+
+        //Manager creation
+        //TODO Manager
+
+       /* try
+        {
+            AgentController ac = getContainerController().createNewAgent("m1", "Manager", null);
+            ac.start();
+        } catch (StaleProxyException ex)
+        {
+            Logger.getLogger(AgentsLoader.class.getName()).log(Level.SEVERE, null, ex);
+        }*/
+
+
+
+
 
     }
 
@@ -58,7 +106,7 @@ public class AgentsLoader extends Agent {
                                 theme, text, complexity
                         };
 
-                return getContainerController().createNewAgent(agentName, "Questions&Tickets.QuestionAgent", args);
+                return getContainerController().createNewAgent(agentName, "QuestionAgent", args);
 
             default:
                 return null;

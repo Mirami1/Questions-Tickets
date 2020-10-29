@@ -7,6 +7,9 @@ import java.io.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+
+/*Загрузчик агентов - этот агент должен быть запущен первым из RMA или консоли, считывает файл, в котором лежат количество билетов и сами по содержанию вопросики
+* когда у себя запускать будешь измени пути, как-нибудь изменю нахождение файла, но позже*/
 public class AgentsLoader extends Agent {
     @Override
     protected void setup() {
@@ -20,6 +23,7 @@ public class AgentsLoader extends Agent {
             String currentLine;
             while ((currentLine = reader.readLine()) != null) {
                 lineCount++;
+                //передаем в специальный метод информацию о вопросе для создания агента Вопроса
                 AgentController ac = parseAgent(currentLine);
                 if (ac != null) {
                     ac.start();
@@ -65,6 +69,7 @@ public class AgentsLoader extends Agent {
 
         for(int i=0;i<countOfExamCardAgents;i++){
             try {
+                //от контроллера контейнера находим класс агента Билета, даём имя и запускаем его
                 AgentController ac = getContainerController().createNewAgent("b"+i,"ExamCardAgent",null);
                 ac.start();
             } catch (StaleProxyException ex) {
@@ -73,16 +78,16 @@ public class AgentsLoader extends Agent {
         }
 
         //Manager creation
-        //TODO Manager
 
-       /* try
+
+        try
         {
             AgentController ac = getContainerController().createNewAgent("m1", "Manager", null);
             ac.start();
         } catch (StaleProxyException ex)
         {
             Logger.getLogger(AgentsLoader.class.getName()).log(Level.SEVERE, null, ex);
-        }*/
+        }
 
 
 
@@ -93,6 +98,7 @@ public class AgentsLoader extends Agent {
     private AgentController parseAgent(String s) throws StaleProxyException {
         String[] splitted = s.split(";");
 
+        //распиливаем по кусочкам инфу о вопросе и создаем аргументы для скармливания агенту Вопроса
         switch (splitted[0].charAt(0)) {
             case 'q':
                 String agentName = splitted[0] + splitted[1];
@@ -105,7 +111,7 @@ public class AgentsLoader extends Agent {
                         {
                                 theme, text, complexity
                         };
-
+                //от контроллера контейнера находим класс агента Вопроса, даём имя и запускаем его
                 return getContainerController().createNewAgent(agentName, "QuestionAgent", args);
 
             default:

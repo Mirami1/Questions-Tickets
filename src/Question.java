@@ -1,3 +1,5 @@
+/* Сама сущность вопроса - тема, текст и сложность*/
+
 public class Question {
     String theme;
     String text;

@@ -12,19 +12,21 @@ import java.util.logging.Logger;
 
 public class QuestionAgent extends Agent {
     Question q;
-    boolean isBusy = false;
+    boolean isBusy = false; // означает - забрали ли уже этот вопроса?
 
     @Override
     protected void setup() {
         System.out.println("Question " + getLocalName() + " is ready!");
 
         try {
+            //даём немного больше времени на восстание агенту, ведь каждому агенту даётся свой поток исполнения
             Thread.sleep(1000);
         } catch (InterruptedException ex) {
             Logger.getLogger(QuestionAgent.class.getName()).log(Level.SEVERE, null, ex);
         }
 
-
+        // забирает аргументы, которые передавались при создании агента от контроллера контейнера (в AgentsLoader)
+        // в случае проблем с аргументами - просто душим дефектного агента (уничтожаем)
         Object args[] = getArguments();
 
         if (args != null && args.length == 3) {
@@ -46,7 +48,7 @@ public class QuestionAgent extends Agent {
             return;
         }
 
-        /* Регистрируем агента в системе */
+        /* Регистрируем агента в системе, чтобы его видели билеты */
         DFAgentDescription dfd = new DFAgentDescription();
         dfd.setName(getAID());
         ServiceDescription sd = new ServiceDescription();
@@ -58,12 +60,15 @@ public class QuestionAgent extends Agent {
         } catch (FIPAException fe) {
             fe.printStackTrace();
         }
-
+        // добавим поведение, чтобы агент Вопроса реагировал на запросы от Билетов
         addBehaviour(new CyclicBehaviour() {
             @Override
             public void action() {
+                // получаем сообщение
                 ACLMessage msg = myAgent.receive();
                 if (msg != null) {
+                    // если Вопроса спрашивают и он НЕ занят, то отвечаем Билету предложением (ACLMessage.Propose)
+                    // и содержанием вопросом
                     if (msg.getPerformative() == ACLMessage.REQUEST && !isBusy) {
                         ACLMessage reply = msg.createReply();
                         reply.setContent(q.toString());
@@ -72,6 +77,7 @@ public class QuestionAgent extends Agent {
                         System.out.println(myAgent.getLocalName() + " ответил на запрос");
 
                     } else {
+                        // если билет принимает предложение, делаем вопрос занятым и отвечаем согласием и дерегестрируемся
                         if (msg.getPerformative() == ACLMessage.ACCEPT_PROPOSAL && !isBusy) {
                             isBusy = true;
                             ACLMessage reply = msg.createReply();
@@ -87,6 +93,7 @@ public class QuestionAgent extends Agent {
                                 fe.printStackTrace();
                             }
                         } else {
+                            // если вдруг приняли Билет предложение, но вопрос уже занят, отвечаем отказом
                             if (msg.getPerformative() == ACLMessage.ACCEPT_PROPOSAL && isBusy) {
                                 ACLMessage reply = msg.createReply();
                                 reply.setContent(q.toString());
@@ -95,6 +102,7 @@ public class QuestionAgent extends Agent {
                             }
                         }
                     }
+                    // если пришла отмена от Билета, перегестрируемся
                     if (msg.getPerformative() == ACLMessage.CANCEL) {
                         isBusy = false;
                         System.err.println("CANCEL");
@@ -112,7 +120,7 @@ public class QuestionAgent extends Agent {
                         return;
 
                     }
-
+                // в остальных случаях блокируем поведение до появления нового письма от Билета
                 } else {
                     block();
                 }

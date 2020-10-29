@@ -99,10 +99,11 @@ public class Manager extends Agent {
                     if (msg != null) {
                         if (msg.getContent().equals("Я поменял сервис")) {
                             readyCards++;
-                            //System.out.println(readyCards);
+                            System.out.println(readyCards);
                         }
                         if (readyCards == countOfCards) {
                             System.err.println("Все поменяли свои сервисы");
+                            System.out.println(readyCards);
                             //посылает разрешение на начало обмена
                             message = new ACLMessage(ACLMessage.CONFIRM);
                             for (AID aid : cardAgents.keySet()) {
@@ -125,6 +126,7 @@ public class Manager extends Agent {
                     try {
                         DFAgentDescription[] result = DFService.search(myAgent, template);
                         countOfCards = result.length;
+                        System.err.println("Инициаторов: "+countOfCards);
                     } catch (FIPAException ex) {
                         ex.printStackTrace();
                     }
@@ -135,6 +137,7 @@ public class Manager extends Agent {
                     msg = myAgent.receive(mt);
                     if (msg != null) {
                         countOfCards--;
+                        System.err.println(countOfCards);
                         if (countOfCards <= 0) //если все билеты закончили обмен
                         {
                             System.out.println();
@@ -177,12 +180,15 @@ public class Manager extends Agent {
                     for (AID aid : cards) {
                         message.addReceiver(aid);
                     }
+
                     //отправляем требование показать себя
                     message.setContent("Покажи результат");
                     message.setLanguage("1");
                     myAgent.send(message);
                     step = 6;
+                    myAgent.doDelete();
                     break;
+
             }
         }
     }

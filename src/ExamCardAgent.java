@@ -19,8 +19,8 @@ public class ExamCardAgent extends Agent {
     private Question firstQuestion;
     private Question secondQuestion;
     public double average = 0;
-    boolean isChanged = false; // для обмена вопросами
-
+    boolean isChangedInitiator = false; // для обмена вопросами
+    boolean isChanged = false;
     HashSet<AID> simpleCards; // простые вопросы
 
     @Override
@@ -46,7 +46,8 @@ public class ExamCardAgent extends Agent {
         }
         // добавляем поведение запроса вопроса с периодичностью в 3 секунды
         addBehaviour(new QuestionRequester(this, 3000));
-        addBehaviour(new Exchanger(this, 5000));
+        //Thread.sleep(5000);
+        addBehaviour(new Exchanger(this, 10000));
     }
 
     private class QuestionRequester extends TickerBehaviour {
@@ -303,7 +304,7 @@ public class ExamCardAgent extends Agent {
                                 myAgent.addBehaviour(new SimpleBehaviour());
                             }
                             ((ExamCardAgent) myAgent).average = average;
-                            //step = 2;
+                            step = 2;
                         }
                     } else {
                         block();
@@ -326,7 +327,7 @@ public class ExamCardAgent extends Agent {
 
         @Override
         protected void onTick() {
-            if (isChanged)
+            if (isChangedInitiator)
                 return;
             switch (step) {
                 case 0:
@@ -344,10 +345,13 @@ public class ExamCardAgent extends Agent {
                     } catch (FIPAException fe) {
                         fe.printStackTrace();
                     }
+                    if (simpleCards.size() == 0)
+                        return;
                     ACLMessage message = new ACLMessage(ACLMessage.REQUEST);
                     for (AID card : simpleCards) {
                         message.addReceiver(card);
                     }
+
                     message.setContent("Дай свои вопросы");
                     message.setReplyWith("request" + System.currentTimeMillis());
                     message.setLanguage("1");
@@ -364,13 +368,14 @@ public class ExamCardAgent extends Agent {
         ACLMessage msg;
         MessageTemplate mt;
         MessageTemplate mtl = MessageTemplate.MatchLanguage("1");
+        int count_of_refuses = 0;
 
         @Override
         public void action() {
             switch (step) {
                 case 1:
                     // если не менялся
-                    if (!isChanged) {
+                    if (!isChangedInitiator) {
                         // получаем от обычных вопросы
                         mt = MessageTemplate.and(mtl, MessageTemplate.MatchPerformative(ACLMessage.PROPOSE));
                         msg = myAgent.receive(mt);
@@ -419,11 +424,13 @@ public class ExamCardAgent extends Agent {
                                 }
                                 // если нет, на нет и суда нет
                             else {
+
                                 System.out.println("У " + myAgent.getLocalName() + " нет хороших вариантов обмена с " + msg.getSender().getLocalName());
                                 simpleCards.remove(msg.getSender());
                                 if (simpleCards.size() <= 0) //если нам ответили все simple-билеты
                                 {
                                     step = 3;
+                                    break;
                                 }
                             }
 
@@ -434,66 +441,92 @@ public class ExamCardAgent extends Agent {
                     }
                     break;
                 case 2:
-                    // ждем сообщений по языку
-                    mt = MessageTemplate.and(mtl, MessageTemplate.or(MessageTemplate.MatchPerformative(ACLMessage.REFUSE), MessageTemplate.MatchPerformative(ACLMessage.AGREE)));
-                    msg = myAgent.receive(mt);
-                    if (msg != null) {
-                        //simpleCards.remove(msg.getSender());
-                        // если согласие от простого билета пришло
-                        // принимаем новую комбинацию после того как забрал новую комбинацию обычный билет
-                        if (msg.getPerformative() == ACLMessage.AGREE) {
-                            System.out.println(msg.getContent());
-                            String[] split = msg.getContent().split(":");
-                            firstQuestion = new Question(split[0]);
-                            secondQuestion = new Question(split[1]);
-                            System.out.println(myAgent.getLocalName() + " поменялся с " + msg.getSender().getLocalName());
+                    if (!isChangedInitiator) {
+                        // ждем сообщений по языку
+                        mt = MessageTemplate.and(mtl, MessageTemplate.or(MessageTemplate.MatchPerformative(ACLMessage.REFUSE), MessageTemplate.MatchPerformative(ACLMessage.AGREE)));
+                        msg = myAgent.receive(mt);
+                        if (msg != null) {
+                            simpleCards.remove(msg.getSender());
+                            // если согласие от простого билета пришло
+                            // принимаем новую комбинацию после того как забрал новую комбинацию обычный билет
+                            if (msg.getPerformative() == ACLMessage.AGREE) {
+                                System.out.println(msg.getContent());
+                                String[] split = msg.getContent().split(":");
+                                firstQuestion = new Question(split[0]);
+                                secondQuestion = new Question(split[1]);
+                                System.out.println(myAgent.getLocalName() + " поменялся с " + msg.getSender().getLocalName());
+                            }
+                            if (msg.getPerformative() == ACLMessage.REFUSE) {
+                                System.out.println(myAgent.getLocalName() + " отказали в обмене  с" + msg.getSender().getLocalName());
+                                count_of_refuses++;
+                                if (count_of_refuses == simpleCards.size()) {
+                                    System.err.println(myAgent.getLocalName() + " устал от отказов");
+                                    step = 3;
+                                    break;
+                                }
+
+                                try {
+                                    Thread.sleep(1000);
+                                } catch (InterruptedException e) {
+                                    e.printStackTrace();
+                                }
+
+                                //при отказе в обмене вопросами снова ждем предложения о вопросах
+                            }
+
+                            if (simpleCards.size() <= 0) //если нам ответили все simple-билеты
+                            {
+                                step = 3;
+                                break;
+                            }
+                            step = 1;
+                        } else {
+                            block();
                         }
-                        if (msg.getPerformative() == ACLMessage.REFUSE) {
-                            System.out.println(myAgent.getLocalName() + " отказал в обмене " + msg.getSender().getLocalName());
-                            //при отказе в обмене вопросами снова ждем предложения о вопросах
-                        }
-                        step = 1;
-                        if (simpleCards.size() <= 0) //если нам ответили все simple-билеты
-                        {
-                            step = 3;
-                        }
-                    } else {
-                        block();
                     }
                     break;
                 case 3:
+
                     // если больше не осталось простых вопросов
                     // докладываемся менеджеру о завершении обмена
-                    AID manager = null;
-                    DFAgentDescription template = new DFAgentDescription();
-                    ServiceDescription sd = new ServiceDescription();
-                    sd.setType("manager");
-                    template.addServices(sd);
-                    try {
-                        DFAgentDescription[] result = DFService.search(myAgent, template);
-                        if (result.length != 0) {
-                            manager = result[0].getName();
-                        } else {
-                            return;
+                    if (!isChangedInitiator) {
+                        isChangedInitiator = true;
+                        AID manager = null;
+                        DFAgentDescription template = new DFAgentDescription();
+                        ServiceDescription sd = new ServiceDescription();
+                        sd.setType("manager");
+                        template.addServices(sd);
+                        try {
+                            DFAgentDescription[] result = DFService.search(myAgent, template);
+                            if (result.length != 0) {
+                                manager = result[0].getName();
+                            } else {
+                                return;
+                            }
+                        } catch (FIPAException fe) {
+                            fe.printStackTrace();
                         }
-                    } catch (FIPAException fe) {
-                        fe.printStackTrace();
+                        ACLMessage message = new ACLMessage(ACLMessage.INFORM_REF);
+                        message.addReceiver(manager);
+                        message.setContent("Обмен закончен");
+                        message.setReplyWith("ready" + System.currentTimeMillis());
+                        myAgent.send(message);
+                        System.err.println("Билет " + getName() + " обменялся");
+
+                        step = 4;
                     }
-                    ACLMessage message = new ACLMessage(ACLMessage.INFORM_REF);
-                    message.addReceiver(manager);
-                    message.setContent("Обмен закончен");
-                    message.setReplyWith("ready" + System.currentTimeMillis());
-                    myAgent.send(message);
-                    step = 4;
                     break;
+
                 case 4:
+
                     // получаем требование от менелдера о раскрытии себя
                     mt = MessageTemplate.and(MessageTemplate.MatchLanguage("1"), MessageTemplate.MatchPerformative(ACLMessage.PROPAGATE));
                     msg = myAgent.receive(mt);
                     if (msg != null) {
                         int sum = firstQuestion.complexity + secondQuestion.complexity;
-                        System.out.println("Билет " + myAgent.getLocalName() + " готов: " + ((ExamCardAgent) myAgent).firstQuestion.toString() + ", " + ((ExamCardAgent) myAgent).secondQuestion.toString() + " Сложность=" + sum);
+                        System.out.println("Билет инициатор " + myAgent.getLocalName() + " готов: " + ((ExamCardAgent) myAgent).firstQuestion.toString() + ", " + ((ExamCardAgent) myAgent).secondQuestion.toString() + " Сложность=" + sum);
                         step = 5;
+                        myAgent.doDelete();
                     }
                     break;
 
@@ -567,7 +600,8 @@ public class ExamCardAgent extends Agent {
                 // получаем требование от менелдера о раскрытии себя
                 if (msg.getPerformative() == ACLMessage.PROPAGATE) {
                     int sum = firstQuestion.complexity + secondQuestion.complexity;
-                    System.out.println("Билет " + myAgent.getLocalName() + " готов: " + ((ExamCardAgent) myAgent).firstQuestion.toString() + ", " + ((ExamCardAgent) myAgent).secondQuestion.toString() + " Сложность=" + sum);
+                    System.out.println("Билет простой " + myAgent.getLocalName() + " готов: " + ((ExamCardAgent) myAgent).firstQuestion.toString() + ", " + ((ExamCardAgent) myAgent).secondQuestion.toString() + " Сложность=" + sum);
+                    myAgent.doDelete();
                 }
             } else {
                 block();

@@ -186,7 +186,7 @@ public class Manager extends Agent {
                     message.setLanguage("1");
                     myAgent.send(message);
                     step = 6;
-                    myAgent.doDelete();
+                   // myAgent.doDelete();
                     break;
 
             }

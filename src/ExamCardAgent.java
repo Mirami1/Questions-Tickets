@@ -212,7 +212,7 @@ public class ExamCardAgent extends Agent {
                                 reply.setPerformative(ACLMessage.CANCEL);
                                 reply.setContent("Отмена");
                                 myAgent.send(reply);
-                                System.out.println("Билет " + myAgent.getLocalName() + " отказал - темы не совпали" + msg.getSender().getLocalName());
+                                System.out.println("Билет " + myAgent.getLocalName() + " отказал - темы совпали" + msg.getSender().getLocalName());
                             }
                         }
                         //в случае Отказа возвращаеся к ожиданию приема вопросов
@@ -289,7 +289,7 @@ public class ExamCardAgent extends Agent {
                         ACLMessage reply = msg.createReply();
                         reply.setPerformative(ACLMessage.CONFIRM);
                         reply.setContent("Я поменял сервис");
-                        System.err.println("Билет " + myAgent.getLocalName() + "Поменял сервис");
+                        //System.err.println("Билет " + myAgent.getLocalName() + "Поменял сервис");
                         myAgent.send(reply);
 
                         step = 1;
@@ -350,7 +350,7 @@ public class ExamCardAgent extends Agent {
                     ServiceDescription sd = new ServiceDescription();
                     sd.setType("simple");
                     template.addServices(sd);
-                    System.err.println("Билет " + getLocalName() + " ищет простых cnt = " + cnt);
+                    //System.err.println("Билет " + getLocalName() + " ищет простых cnt = " + cnt);
                     if (cnt == 0) {
                         try {
                             DFAgentDescription[] result = DFService.search(myAgent, template);
@@ -358,12 +358,12 @@ public class ExamCardAgent extends Agent {
                             for (DFAgentDescription card : result) {
                                 simpleCards.add(card.getName());
                             }
-                            System.err.println("SimpleCards составлен у " + myAgent.getLocalName());
+                            //System.err.println("SimpleCards составлен у " + myAgent.getLocalName());
                         } catch (FIPAException fe) {
                             fe.printStackTrace();
                         }
                         if (simpleCards.size() == 0) {
-                            System.err.println("SimpleCards нет у " + myAgent.getLocalName());
+                            //System.err.println("SimpleCards нет у " + myAgent.getLocalName());
                             return;
                         }
 
@@ -565,7 +565,7 @@ public class ExamCardAgent extends Agent {
                         message.setContent("Обмен закончен");
                         message.setReplyWith("ready" + System.currentTimeMillis());
                         myAgent.send(message);
-                        System.err.println("Билет " + getName() + " обменялся");
+                        System.err.println("Билет " + getName() + " закончил процедуру обмена");
 
                         step = 4;
                     }

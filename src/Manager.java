@@ -107,7 +107,6 @@ public class Manager extends Agent {
                         }
                         if (readyCards == countOfCards) {
                             System.err.println("Все поменяли свои сервисы");
-                            System.out.println(readyCards);
                             //посылает разрешение на начало обмена
                             message = new ACLMessage(ACLMessage.CONFIRM);
                             for (AID aid : cardAgents.keySet()) {
@@ -197,8 +196,10 @@ public class Manager extends Agent {
                     msg = myAgent.receive(mt);
                     if (msg != null) {
                         Double complexity = Double.parseDouble(msg.getContent());
-                        if (count_of_repeats>=5)
-                            return;
+                        if (count_of_repeats>=5){
+                            System.err.println("\n Количество прогонок исчерпано!");
+                            myAgent.doDelete();
+                        }
                         if (complexity > average) {
                             message = new ACLMessage(ACLMessage.FAILURE);
                             HashSet<AID> cards = new HashSet<>();
@@ -230,7 +231,7 @@ public class Manager extends Agent {
                             }
 
                             //отправляем требование показать себя
-                            System.err.println("Всё хуйня, давай заново");
+                            System.err.println("Есть ещё инициаторы");
                             count_of_repeats++;
                             message.setLanguage("1");
                             myAgent.send(message);
